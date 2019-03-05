@@ -1,12 +1,12 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(name='stood',
-        version='0.3',
+        version='0.4',
         description='',
         url='http://github.com/badteddytv/stood_python',
         author='Neil Dwyer',
         author_email='neil@badteddy.tv',
-        packages=['logger'],
+        packages=find_packages(exclude=['contrib', 'docs', 'tests'])
         install_requires=[
             'aiohttp'
             ],
