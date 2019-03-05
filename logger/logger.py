@@ -13,8 +13,9 @@ from elasticsearch import Elasticsearch
 import elasticsearch.helpers as helpers
 
 class ElasticsearchSender(object):
-    def __init__(self):
+    def __init__(self, service_name):
         self.es = None
+        self.service_name = service_name
         self.queue = queue.Queue()
         loop_thread = Thread(target=self._loop)
         loop_thread.start()
@@ -61,7 +62,8 @@ class ElasticsearchSender(object):
                     'line': record.lineno,
                     'msg': record.message,
                     'level': record.levelname,
-                    'timestamp': record.asctime
+                    'timestamp': record.asctime,
+                    'service': self.service_name
                     }
                 })
             try:
@@ -95,7 +97,7 @@ def get_logger(name):
     logger.setLevel(config.LEVEL)
 
     if config.ELASTICSEARCH_ENABLED:
-        elasticsearch_sender = ElasticsearchSender()
+        elasticsearch_sender = ElasticsearchSender(name)
         es_handler = LoggerHandler(elasticsearch_sender)
         logger.addHandler(es_handler)
 
