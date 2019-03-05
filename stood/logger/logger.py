@@ -56,15 +56,13 @@ class ElasticsearchSender(object):
             payload.append({
                 '_index': index,
                 '_type': 'document',
-                'doc': {
-                    '_id': uuid.uuid4(),
-                    'file': record.pathname,
-                    'line': record.lineno,
-                    'msg': record.message,
-                    'level': record.levelname,
-                    'timestamp': record.asctime,
-                    'service': self.service_name
-                    }
+                '_id': uuid.uuid4(),
+                'file': record.pathname,
+                'line': record.lineno,
+                'msg': record.message,
+                'level': record.levelname,
+                'timestamp': record.asctime,
+                'service': self.service_name
                 })
             try:
                 record = self.queue.get_nowait()
