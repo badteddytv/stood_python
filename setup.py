@@ -6,7 +6,7 @@ setup(name='stood',
         url='http://github.com/badteddytv/stood_python',
         author='Neil Dwyer',
         author_email='neil@badteddy.tv',
-        packages=find_packages(exclude=['contrib', 'docs', 'tests'])
+        packages=find_packages(exclude=['contrib', 'docs', 'tests']),
         install_requires=[
             'aiohttp'
             ],
