@@ -1,41 +1,87 @@
 import os
 import logging
-import aiohttp
-import asyncio
 import queue
 import sys
+import time
+import uuid
+import datetime
+import traceback
+from threading import Thread
 from logging import StreamHandler
 from config import config
+from elasticsearch import Elasticsearch
+import elasticsearch.helpers as helpers
 
-class Elasticsearch(object):
+class ElasticsearchSender(object):
     def __init__(self):
-        self.loop = asyncio.get_event_loop()
-        self.loop.run_until_complete(self.setup())
+        self.es = None
         self.queue = queue.Queue()
+        loop_thread = Thread(target=self._loop)
+        loop_thread.start()
 
-    async def setup(self):
-        self.http_client = aiohttp.ClientSession()
+        setup_thread = Thread(target=self.setup)
+        setup_thread.start()
 
-    async def _loop(self):
+    def setup(self):
+        try:
+            self.es = Elasticsearch(
+                    [config.ELASTICSEARCH_URL],
+                    sniff_on_start=True,
+                    sniff_on_connectoin_fail=True,
+                    snifffer_timeout=30
+                    )
+        except Exception:
+            traceback.print_exc()
+            time.sleep(15)
+            self.setup()
+
+    def _loop(self):
         while True:
-            await self._send_logs()
-            await asyncio.sleep(60)
+            time.sleep(10)
+            self._send_logs()
 
-    def add_msg(self, msg):
-        self.queue.put(msg)
+    def add_record(self, record):
+        self.queue.put(record)
 
-    async def _send_logs(self):
-        for msg in self.queue:
-            pass
+    def _send_logs(self):
+        current_day = datetime.datetime.today().strftime('%Y-%m-%d')
+        index = 'log-{}'.format(current_day)
+        payload = []
+        try:
+            record = self.queue.get_nowait()
+        except queue.Empty:
+            record = None
+        while record is not None:
+            payload.append({
+                '_index': index,
+                '_type': 'document',
+                'doc': {
+                    '_id': uuid.uuid4(),
+                    'file': record.pathname,
+                    'line': record.lineno,
+                    'msg': record.message,
+                    'level': record.levelname,
+                    'timestamp': record.asctime
+                    }
+                })
+            try:
+                record = self.queue.get_nowait()
+            except queue.Empty:
+                record = None
+
+        if self.es is None:
+            print('ERROR: dropped logs')
+            return
+
+        helpers.bulk(self.es, payload)
 
 class LoggerHandler(StreamHandler):
-    def __init__(self, elasticsearch):
+    def __init__(self, elasticsearch_sender):
         super().__init__()
-        self.elasticsearch = elasticsearch
+        self.elasticsearch_sender = elasticsearch_sender
 
     def emit(self, record):
-        msg = self.format(record)
-        self.elasticsearch.add_msg(msg)
+        self.elasticsearch_sender.add_record(record)
 
 logger = None
 
@@ -45,21 +91,23 @@ def get_logger(name):
     if logger is not None:
         return logger
 
-    elasticsearch = Elasticsearch()
     logger = logging.getLogger(name)
     logger.setLevel(config.LEVEL)
 
-    es_handler = LoggerHandler(elasticsearch)
+    if config.ELASTICSEARCH_ENABLED:
+        elasticsearch_sender = ElasticsearchSender()
+        es_handler = LoggerHandler(elasticsearch_sender)
+        logger.addHandler(es_handler)
 
     stream_handler = StreamHandler(sys.stdout)
     formatter = logging.Formatter('%(filename)s(%(lineno)d):%(funcName)s %(asctime)s - %(name)s - %(levelname)s - %(message)s')
     stream_handler.setFormatter(formatter)
 
     logger.addHandler(stream_handler)
-    logger.addHandler(es_handler)
 
     return logger
 
 if __name__ == '__main__':
     l = get_logger(name='test')
     l.info('hello')
+    l.info('world')
