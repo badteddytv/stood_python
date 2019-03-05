@@ -8,7 +8,7 @@ import datetime
 import traceback
 from threading import Thread
 from logging import StreamHandler
-from config import config
+from stood.config import config
 from elasticsearch import Elasticsearch
 import elasticsearch.helpers as helpers
 
