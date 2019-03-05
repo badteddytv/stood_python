@@ -1,7 +1,7 @@
 from setuptools import setup
 
-setup(name='stood_python',
-        version='0.2',
+setup(name='stood',
+        version='0.3',
         description='',
         url='http://github.com/badteddytv/stood_python',
         author='Neil Dwyer',
