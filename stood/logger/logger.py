@@ -27,10 +27,10 @@ MAPPINGS = """
 }
 """
 
-class ElasticsearchSender(object):
-    def __init__(self, service_name):
+class ElasticsearchHandler(StreamHandler):
+    def __init__(self):
+        super().__init__()
         self.es = None
-        self.service_name = service_name
         self.queue = queue.Queue()
         loop_thread = Thread(target=self._loop)
         loop_thread.start()
@@ -80,7 +80,7 @@ class ElasticsearchSender(object):
                 'msg': record.message,
                 'level': record.levelname,
                 'timestamp': int(record.created * 1000),
-                'service': self.service_name
+                'service': record.name
                 })
             try:
                 record = self.queue.get_nowait()
@@ -93,13 +93,8 @@ class ElasticsearchSender(object):
 
         helpers.bulk(self.es, payload)
 
-class LoggerHandler(StreamHandler):
-    def __init__(self, elasticsearch_sender):
-        super().__init__()
-        self.elasticsearch_sender = elasticsearch_sender
-
     def emit(self, record):
-        self.elasticsearch_sender.add_record(record)
+        self.add_record(record)
 
 logger = None
 
@@ -113,9 +108,8 @@ def get_logger(name):
     logger.setLevel(config.LEVEL)
 
     if config.ELASTICSEARCH_ENABLED:
-        elasticsearch_sender = ElasticsearchSender(name)
-        es_handler = LoggerHandler(elasticsearch_sender)
-        logger.addHandler(es_handler)
+        elasticsearch_handler = ElasticsearchHandler()
+        logger.addHandler(elasticsearch_handler)
 
     stream_handler = StreamHandler(sys.stdout)
     formatter = logging.Formatter('%(filename)s(%(lineno)d):%(funcName)s %(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -129,3 +123,4 @@ if __name__ == '__main__':
     l = get_logger(name='test')
     l.info('hello')
     l.info('world')
+    l.error('uh oh')
