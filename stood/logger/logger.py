@@ -12,6 +12,21 @@ from stood.config import config
 from elasticsearch import Elasticsearch
 import elasticsearch.helpers as helpers
 
+  #"doc_type": "logs-*",
+MAPPINGS = """
+{
+  "mappings": {
+    "_doc": {
+      "properties": {
+        "timestamp": {
+          "type": "date"
+        }
+      }
+    }
+  }
+}
+"""
+
 class ElasticsearchSender(object):
     def __init__(self, service_name):
         self.es = None
@@ -31,6 +46,9 @@ class ElasticsearchSender(object):
                     sniff_on_connectoin_fail=True,
                     snifffer_timeout=30
                     )
+            current_day = datetime.datetime.today().strftime('%Y-%m-%d')
+            res = self.es.indices.create('log-{}'.format(current_day), ignore=400, body=MAPPINGS)
+
         except Exception:
             traceback.print_exc()
             time.sleep(15)
@@ -55,13 +73,13 @@ class ElasticsearchSender(object):
         while record is not None:
             payload.append({
                 '_index': index,
-                '_type': 'document',
+                '_type': '_doc',
                 '_id': uuid.uuid4(),
                 'file': record.pathname,
                 'line': record.lineno,
                 'msg': record.message,
                 'level': record.levelname,
-                'timestamp': record.asctime,
+                'timestamp': int(record.created * 1000),
                 'service': self.service_name
                 })
             try:
