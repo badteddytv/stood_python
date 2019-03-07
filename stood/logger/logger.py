@@ -71,17 +71,21 @@ class ElasticsearchHandler(StreamHandler):
         except queue.Empty:
             record = None
         while record is not None:
-            payload.append({
-                '_index': index,
-                '_type': '_doc',
-                '_id': uuid.uuid4(),
-                'file': record.pathname,
-                'line': record.lineno,
-                'msg': record.message,
-                'level': record.levelname,
-                'timestamp': int(record.created * 1000),
-                'service': record.name
-                })
+            new_record = {
+                    '_index': index,
+                    '_type': '_doc',
+                    '_id': uuid.uuid4(),
+                    'file': record.pathname,
+                    'line': record.lineno,
+                    'msg': record.message,
+                    'level': record.levelname,
+                    'timestamp': int(record.created * 1000),
+                    'service': record.name,
+                    'func': record.funcName
+                    }
+            if record.exc_info:
+                new_record['exception'] = ''.join(traceback.format_exception(*record.exc_info))
+            payload.append(new_record)
             try:
                 record = self.queue.get_nowait()
             except queue.Empty:
@@ -124,3 +128,7 @@ if __name__ == '__main__':
     l.info('hello')
     l.info('world')
     l.error('uh oh')
+    try:
+        raise Exception('test exception')
+    except Exception:
+        l.exception('exception thrown')
