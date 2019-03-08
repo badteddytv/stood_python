@@ -99,7 +99,7 @@ logger = None
 
 def get_event_tracker(name):
     et = EventTracker(name)
-    return (et)
+    return et
 
 if __name__ == '__main__':
     test_data = {'data':'data'}
