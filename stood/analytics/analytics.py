@@ -27,6 +27,10 @@ MAPPINGS = """
 
 #routing key and data (payload, user, etc.)
 
+class DummyEventTracker(object):
+    def track_event(self, routing_key, data):
+        pass
+
 
 class EventTracker(object):
     def __init__(self, name):
@@ -98,8 +102,10 @@ class EventTracker(object):
 logger = None
 
 def get_event_tracker(name):
-    et = EventTracker(name)
-    return et
+    if config.ELASTICSEARCH_ENABLED:
+        return EventTracker(name)
+
+    return DummyEventTracker()
 
 if __name__ == '__main__':
     test_data = {'data':'data'}
