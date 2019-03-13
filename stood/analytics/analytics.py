@@ -31,15 +31,15 @@ class DummyEventTracker(object):
     def track_event(self, routing_key, data):
         pass
 
+def get_current_day():
+    return datetime.datetime.today().strftime('%Y-%m-%d')
 
 class EventTracker(object):
     def __init__(self, name):
         self.es = None
         self.name = name
         self.queue = queue.Queue()
-        loop_thread = Thread(target=self._loop)
-        loop_thread.start()
-
+        self.current_day = get_current_day()
         setup_thread = Thread(target=self._setup)
         setup_thread.start()
 
@@ -51,8 +51,9 @@ class EventTracker(object):
                     sniff_on_connectoin_fail=True,
                     snifffer_timeout=30
                     )
-            current_day = datetime.datetime.today().strftime('%Y-%m-%d')
-            res = self.es.indices.create('analytics-{}'.format(current_day), ignore=400, body=MAPPINGS)
+            res = self.es.indices.create('analytics-{}'.format(self.current_day), ignore=400, body=MAPPINGS)
+            loop_thread = Thread(target=self._loop)
+            loop_thread.start()
 
         except Exception:
             traceback.print_exc()
@@ -68,10 +69,17 @@ class EventTracker(object):
         self.queue.put((routing_key, data))
 
     def _send_events(self):
-        current_day = datetime.datetime.today().strftime('%Y-%m-%d')
+        new_day = get_current_day()
+        if self.current_day != new_day:
+            try:
+                self.current_day = new_day
+                self.es.indices.create('log-{}'.format(self.current_day), ignore=400, body=MAPPINGS)
+            except Exception:
+                traceback.print_exc()
+                return
 
         current_time = datetime.datetime.now().timestamp()
-        index = 'analytics-{}'.format(current_day)
+        index = 'analytics-{}'.format(self.current_day)
         payload = []
         try:
             routing_key, data = self.queue.get_nowait()
@@ -111,3 +119,5 @@ if __name__ == '__main__':
     test_data = {'data':'data'}
     l = get_event_tracker(name='analytics')
     l.track_event(routing_key='test.test',data = test_data)
+    while True:
+        pass
