@@ -12,6 +12,8 @@ from stood.config import config
 from elasticsearch import Elasticsearch
 import elasticsearch.helpers as helpers
 
+hostname = os.getenv('HOSTNAME', 'NO_HOSTNAME')
+
   #"doc_type": "logs-*",
 MAPPINGS = """
 {
@@ -91,7 +93,8 @@ class ElasticsearchHandler(StreamHandler):
                     'level': record.levelname,
                     'timestamp': int(record.created * 1000),
                     'service': record.name,
-                    'func': record.funcName
+                    'func': record.funcName,
+                    'hostname': hostname
                     }
             if record.exc_info:
                 new_record['exception'] = ''.join(traceback.format_exception(*record.exc_info))

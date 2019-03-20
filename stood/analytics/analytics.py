@@ -10,6 +10,8 @@ from stood.config import config
 from elasticsearch import Elasticsearch
 import elasticsearch.helpers as helpers
 
+hostname = os.getenv('HOSTNAME', 'NO_HOSTNAME')
+
   #"doc_type": "logs-*",
 MAPPINGS = """
 {
@@ -94,7 +96,8 @@ class EventTracker(object):
                 'timestamp': int(current_time * 1000),
                 'service': self.name,
                 'routing_key': routing_key,
-                'data':data
+                'data':data,
+                'hostname': hostname
                 })
             try:
                 routing_key = self.queue.get_nowait()
