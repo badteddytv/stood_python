@@ -70,8 +70,6 @@ class ElasticsearchHandler(StreamHandler):
             index = 'log-{}'.format(new_day)
             if not self.es.indices.exists(index=index):
                 self.es.indices.create(index, ignore=400, body=MAPPINGS)
-
-            index = 'log-{}'.format(self.current_day)
         except Exception:
             traceback.print_exc()
             return

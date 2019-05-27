@@ -77,7 +77,6 @@ class EventTracker(object):
                 self.es.indices.create(index, ignore=400, body=MAPPINGS)
 
             current_time = datetime.datetime.now().timestamp()
-            index = 'analytics-{}'.format(self.current_day)
         except Exception:
             traceback.print_exc()
             return
