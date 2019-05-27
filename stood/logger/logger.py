@@ -14,7 +14,6 @@ import elasticsearch.helpers as helpers
 
 hostname = os.getenv('HOSTNAME', 'NO_HOSTNAME')
 
-  #"doc_type": "logs-*",
 MAPPINGS = """
 {
   "mappings": {
@@ -29,34 +28,16 @@ MAPPINGS = """
 }
 """
 
+
 def get_current_day():
     return datetime.datetime.today().strftime('%Y-%m-%d')
+
 
 class ElasticsearchHandler(StreamHandler):
     def __init__(self):
         super().__init__()
         self.es = None
         self.queue = queue.Queue()
-        self.current_day = get_current_day()
-        setup_thread = Thread(target=self.setup)
-        setup_thread.start()
-
-    def setup(self):
-        try:
-            self.es = Elasticsearch(
-                    [config.ELASTICSEARCH_URL],
-                    sniff_on_start=True,
-                    sniff_on_connectoin_fail=True,
-                    snifffer_timeout=30
-                    )
-            res = self.es.indices.create('log-{}'.format(self.current_day), ignore=400, body=MAPPINGS)
-            loop_thread = Thread(target=self._loop)
-            loop_thread.start()
-
-        except Exception:
-            traceback.print_exc()
-            time.sleep(15)
-            self.setup()
 
     def _loop(self):
         while True:
@@ -68,16 +49,13 @@ class ElasticsearchHandler(StreamHandler):
 
     def _send_logs(self):
         new_day = get_current_day()
-        if self.current_day != new_day:
-            try:
-                self.current_day = new_day
-                self.es.indices.create('log-{}'.format(self.current_day), ignore=400, body=MAPPINGS)
-            except Exception:
-                traceback.print_exc()
-                return
+        index = 'log-{}'.format(new_day)
+        if not self.es.indices.exists(index=index):
+            self.es.indices.create(index, ignore=400, body=MAPPINGS)
 
         index = 'log-{}'.format(self.current_day)
         payload = []
+
         try:
             record = self.queue.get_nowait()
         except queue.Empty:
@@ -113,7 +91,9 @@ class ElasticsearchHandler(StreamHandler):
     def emit(self, record):
         self.add_record(record)
 
+
 logger = None
+
 
 def get_logger(name):
     global logger
@@ -135,6 +115,7 @@ def get_logger(name):
     logger.addHandler(stream_handler)
 
     return logger
+
 
 if __name__ == '__main__':
     l = get_logger(name='test')
