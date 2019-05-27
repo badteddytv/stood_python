@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
         name='stood',
-        version='1.4.0',
+        version='1.5.0',
         description='',
         url='http://github.com/badteddytv/stood_python',
         author='Neil Dwyer',

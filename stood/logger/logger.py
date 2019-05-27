@@ -38,6 +38,23 @@ class ElasticsearchHandler(StreamHandler):
         super().__init__()
         self.es = None
         self.queue = queue.Queue()
+        setup_thread = Thread(target=self.setup)
+        setup_thread.start()
+
+    def setup(self):
+        try:
+            self.es = Elasticsearch(
+                    [config.ELASTICSEARCH_URL],
+                    sniff_on_start=True,
+                    sniff_on_connectoin_fail=True,
+                    snifffer_timeout=30
+                    )
+            loop_thread = Thread(target=self._loop)
+            loop_thread.start()
+        except Exception:
+            traceback.print_exc()
+            time.sleep(15)
+            self.setup()
 
     def _loop(self):
         while True:
@@ -48,12 +65,17 @@ class ElasticsearchHandler(StreamHandler):
         self.queue.put(record)
 
     def _send_logs(self):
-        new_day = get_current_day()
-        index = 'log-{}'.format(new_day)
-        if not self.es.indices.exists(index=index):
-            self.es.indices.create(index, ignore=400, body=MAPPINGS)
+        try:
+            new_day = get_current_day()
+            index = 'log-{}'.format(new_day)
+            if not self.es.indices.exists(index=index):
+                self.es.indices.create(index, ignore=400, body=MAPPINGS)
 
-        index = 'log-{}'.format(self.current_day)
+            index = 'log-{}'.format(self.current_day)
+        except Exception:
+            traceback.print_exc()
+            return
+
         payload = []
 
         try:
